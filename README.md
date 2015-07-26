@@ -62,7 +62,7 @@ On create and update methods promise resolution updates user and returns the use
 
 ```
 user.create()
-    .then((userInstance) => { 
+    .then((userInstance) => {
         // do something else with user
         // userInstance === user
     });
@@ -74,9 +74,9 @@ user.create()
 user.name = 'Sicrano';
 
 user.update()
-    .then((userInstance) => { 
+    .then((userInstance) => {
         // do something else with user
-        // userInstance === user        
+        // userInstance === user
     });
 ```
 
@@ -86,7 +86,7 @@ Destroy method removes all properties and property values of the user instance. 
 
 ```
 user.destroy()
-    .then(() => { 
+    .then(() => {
         // do something
         // works on non strict mode
         delete user;
