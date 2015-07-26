@@ -62,6 +62,7 @@ On create and update methods promise resolution updates user and returns the use
 
 ```
 user.create()
+
     .then((userInstance) => {
         // do something else with user
         // userInstance === user
