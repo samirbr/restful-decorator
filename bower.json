@@ -1,0 +1,21 @@
+{
+  "name": "restful-decorator",
+  "version": "0.1.0",
+  "description": "A simple RESTful decorator for Aurelia.",
+  "keywords": [
+    "aurelia",
+    "http",
+    "ajax",
+    "REST"
+  ],
+  "homepage": "",
+  "license": "MIT",
+  "authors": [
+    "Samir El Aouar <samirbr@gmail.com>"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/samirbr/restful-decorator"
+  },
+  "dependencies": {}
+}
