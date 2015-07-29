@@ -56,7 +56,7 @@ RESTful methods of class ```User``` will request http://example.com/api/user/ on
 var user = new User('Fulano');
 ```
 
-```Create``` and ```update``` methods promise resolution, update the user, and return the user instance.
+The promise resolution of methods ```create``` and ```update``` update the user, and return the user instance.
 
 #### Create method
 
