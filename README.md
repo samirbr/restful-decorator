@@ -1,6 +1,6 @@
 # Aurelia @rest decorator
 
-Created to simplify calls with HttpClient the @rest decorator add CRUD methods to es6 classes.
+Created to simplify calls with Aurelia HttpClient. The @rest decorator adds CRUD methods to es6 classes.
 
 ## Usage
 
@@ -50,13 +50,13 @@ class User {
 }
 ```
 
-User RESTful methods will request http://example.com/api/user/ on all calls.
+RESTful methods of class ```User``` will request http://example.com/api/user/ on all calls.
 
 ```
 var user = new User('Fulano');
 ```
 
-On create and update methods promise resolution updates user and returns the user instance as well.
+The promise resolution of methods ```create``` and ```update``` update the user, and return the user instance.
 
 #### Create method
 
@@ -70,6 +70,8 @@ user.create()
 
 #### Update method
 
+Ex.:
+
 ```
 user.name = 'Sicrano';
 
@@ -82,7 +84,7 @@ user.update()
 
 #### Destroy method
 
-Destroy method removes all properties and property values of the user instance. It can't destroy user instance object since 'this' object is immutable.
+Destroy method removes all properties and property values of the user instance. It can't destroy the user instance object since 'this' object is immutable.
 
 ```
 user.destroy()
@@ -95,9 +97,9 @@ user.destroy()
 
 ### Retrieving data
 
-#### User get static method:
+#### User.get static method:
 
-Lookup an user with id 1.
+Ex.: Lookup an user with id 1.
 
 ```
 User.get({ id: 1 })
@@ -106,9 +108,9 @@ User.get({ id: 1 })
     });
 ```
 
-#### User query static method:
+#### User.query static method:
 
-Lookup users with name equal to 'Beltrano'.
+Ex.: Lookup users with name equal to 'Beltrano'.
 
 ```
 User.query({ name: 'Beltrano' })
