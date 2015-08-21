@@ -15,6 +15,13 @@ System.register(['aurelia-http-client'], function (_export) {
       obj[key] = config.params[key];
       return obj;
     }, {});
+    var defaultMethods = {
+      'GET': { withParams: true },
+      'POST': { withContent: true },
+      'PUT': { withContent: true, withUrl: true },
+      'PATCH': { withContent: true, withUrl: true },
+      'DELETE': { withUrl: true }
+    };
 
     function createRequest() {
       var baseUrl = url.replace(/(\/:\w+\/?)/g, '') + '/';
@@ -44,104 +51,95 @@ System.register(['aurelia-http-client'], function (_export) {
     $resource.get = function (params) {
       var appendUrl = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
 
-      return new Promise(function (resolve, reject) {
-        var client = createRequest();
-        var urlApp = Object.keys(params).filter(function (key) {
-          return paramKeys.indexOf(key) !== -1;
-        }).map(function (key) {
-          return params[key];
-        }).join('/');
-
-        if (appendUrl) {
-          client.withUrl(urlApp);
-        } else {
-          client.withParams(params);
-        }
-
-        client.asGet().send().then(function (response) {
-          resolve(response.content);
-        }, function (err) {
-          reject(err);
-        })['catch'](function (err) {
-          reject(err);
-        });
-      });
+      return doRequest('GET', params, appendUrl);
     };
 
     function extractParams(src, params) {
-      return [{}].concat(Object.keys(params)).reduce(function (obj, key) {
+      return Object.keys(params).reduce(function (obj, key) {
         obj[key] = params[key].indexOf('@') === 0 ? src[params[key].substr(1)] : params[key];
         return obj;
-      });
+      }, {});
     }
 
     function clone(o) {
       return Object.assign({}, o);
     }
 
+    function toMethodFn(method) {
+      return 'as' + method[0].toUpperCase() + method.substr(1).toLowerCase();
+    }
+
+    function doRequest(method, obj) {
+      var appendUrl = arguments.length <= 2 || arguments[2] === undefined ? false : arguments[2];
+
+      var client = createRequest();
+      var urlApp = undefined;
+
+      return new Promise(function (resolve, reject) {
+        if (defaultMethods[method].withUrl) {
+          (function () {
+            var keyVal = extractParams(obj, config.params);
+            urlApp = paramKeys.map(function (key) {
+              return keyVal[key];
+            }).join('/');
+
+            client.withUrl(urlApp);
+          })();
+        }
+
+        if (defaultMethods[method].withContent) {
+          client.withContent(clone(obj));
+        }
+
+        if (defaultMethods[method].withParams) {
+          if (appendUrl) {
+            urlApp = Object.keys(obj).filter(function (key) {
+              return paramKeys.indexOf(key) !== -1;
+            }).map(function (key) {
+              return obj[key];
+            }).join('/');
+
+            client.withUrl(urlApp);
+          } else {
+            client.withParams(obj);
+          }
+        }
+
+        client[toMethodFn(method)].call(client).send().then(function (response) {
+          if (defaultMethods[method].withParams) {
+            resolve(response.content);
+          } else if (defaultMethods[method].withContent) {
+            Object.assign(obj, response.content);
+            resolve(obj);
+          } else {
+            Object.keys(obj).forEach(function (key) {
+              return delete obj[key];
+            });
+            resolve(response.content);
+          }
+        })['catch'](function (err) {
+          reject(err);
+        });
+      });
+    }
+
     return function restDecorator(target) {
       Object.defineProperties(target.prototype, {
         'create': {
           value: function create() {
-            var content = clone(this);
-            var client = createRequest();
-            var self = this;
-
-            return new Promise(function (resolve, reject) {
-              client.withContent(content).asPost().send().then(function (data) {
-                Object.assign(self, data.content);
-                resolve(self);
-              })['catch'](function (err) {
-                reject(err);
-              });
-            });
+            return doRequest('POST', this);
           }
         },
 
         'update': {
           value: function update() {
-            var keyVal = extractParams(this, config.params);
-            var content = clone(this);
-            var client = createRequest();
-            var urlApp = paramKeys.map(function (key) {
-              return keyVal[key];
-            }).join('/');
-            var self = this;
-
-            return new Promise(function (resolve, reject) {
-              client.withUrl(urlApp).withContent(content).asPut().send().then(function (data) {
-                Object.assign(self, data.content);
-                resolve(self);
-              }, function (err) {
-                reject(err);
-              })['catch'](function (err) {
-                reject(err);
-              });
-            });
+            return doRequest('PUT', this);
           }
         },
 
         'destroy': {
           value: function destroy() {
-            var keyVal = extractParams(this, config.params);
-            var client = createRequest();
-            var urlApp = paramKeys.map(function (key) {
-              return keyVal[key];
-            }).join('/');
-            var self = this;
-
-            return new Promise(function (resolve, reject) {
-              client.withUrl(urlApp).asDelete().send().then(function (data) {
-                Object.keys(self).forEach(function (key) {
-                  return delete self[key];
-                });
-                resolve(data.content);
-              }, function (err) {
-                reject(err);
-              })['catch'](function (err) {
-                reject(err);
-              });
-            });
+            return doRequest('DELETE', this);
           }
         },
 

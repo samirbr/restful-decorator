@@ -31,6 +31,13 @@ export function rest(url, config) {
       obj[key] = config.params[key];
       return obj;
     }, {});
+  let defaultMethods = {
+    'GET': { withParams: true },
+    'POST': { withContent: true },
+    'PUT': { withContent: true, withUrl: true },
+    'PATCH': { withContent: true, withUrl: true },
+    'DELETE': { withUrl: true }
+  };
 
   function createRequest() {
     let baseUrl = url.replace(/(\/:\w+\/?)/g, '') + '/';
@@ -79,43 +86,73 @@ export function rest(url, config) {
    * @return {Promise} Returns get or query promise.
    */
   $resource.get = (params, appendUrl = false) => {
-    return new Promise((resolve, reject) => {
-      let client = createRequest();
-      let urlApp = Object.keys(params)
-        .filter(key => paramKeys.indexOf(key) !== -1)
-        .map(key => params[key])
-        .join('/');
-
-      if (appendUrl) {
-        client.withUrl(urlApp);
-      } else {
-        client.withParams(params);
-      }
-
-      client.asGet()
-        .send()
-        .then((response) => {
-          resolve(response.content);
-        }, (err) => {
-          reject(err);
-        })
-        .catch((err) => {
-          reject(err);
-        });
-    });
+    return doRequest('GET', params, appendUrl);
   };
 
   function extractParams(src, params) {
-    return [{}].concat(Object.keys(params))
+    return Object.keys(params)
       .reduce((obj, key) => {
         obj[key] = params[key].indexOf('@') === 0 ?
           src[params[key].substr(1)] : params[key];
         return obj;
-      });
+      }, {});
   }
 
   function clone(o) {
     return Object.assign({}, o);
+  }
+
+  function toMethodFn(method) {
+    return 'as' + method[0].toUpperCase() + method.substr(1).toLowerCase();
+  }
+
+  function doRequest(method, obj, appendUrl = false) {
+    let client = createRequest();
+    let urlApp;
+
+    return new Promise((resolve, reject) => {
+      if (defaultMethods[method].withUrl) {
+        let keyVal = extractParams(obj, config.params);
+        urlApp = paramKeys.map(key => keyVal[key])
+          .join('/');
+
+        client.withUrl(urlApp);
+      }
+
+      if (defaultMethods[method].withContent) {
+        client.withContent(clone(obj));
+      }
+
+      if (defaultMethods[method].withParams) {
+        if (appendUrl) {
+          urlApp = Object.keys(obj)
+            .filter(key => paramKeys.indexOf(key) !== -1)
+            .map(key => obj[key])
+            .join('/');
+
+          client.withUrl(urlApp);
+        } else {
+          client.withParams(obj);
+        }
+      }
+
+      client[toMethodFn(method)].call(client)
+        .send()
+        .then(response => {
+          if (defaultMethods[method].withParams) {
+            resolve(response.content);
+          } else if (defaultMethods[method].withContent) {
+            Object.assign(obj, response.content);
+            resolve(obj);
+          } else {
+            Object.keys(obj).forEach(key => delete obj[key]);
+            resolve(response.content);
+          }
+        })
+        .catch(err => {
+          reject(err);
+        });
+    });
   }
 
   return function restDecorator(target) {
@@ -127,22 +164,7 @@ export function rest(url, config) {
        */
       'create': {
         value: function create() {
-          let content = clone(this);
-          let client = createRequest();
-          let self = this;
-
-          return new Promise((resolve, reject) => {
-            client.withContent(content)
-              .asPost()
-              .send()
-              .then(data => {
-                Object.assign(self, data.content);
-                resolve(self);
-              })
-              .catch(err => {
-                reject(err);
-              });
-          });
+          return doRequest('POST', this);
         }
       },
       /**
@@ -152,28 +174,7 @@ export function rest(url, config) {
        */
       'update': {
         value: function update() {
-          let keyVal = extractParams(this, config.params);
-          let content = clone(this);
-          let client = createRequest();
-          let urlApp = paramKeys.map(key => keyVal[key])
-            .join('/');
-          let self = this;
-
-          return new Promise((resolve, reject) => {
-            client.withUrl(urlApp)
-              .withContent(content)
-              .asPut()
-              .send()
-              .then(data => {
-                Object.assign(self, data.content);
-                resolve(self);
-              }, (err) => {
-                reject(err);
-              })
-              .catch(err => {
-                reject(err);
-              });
-          });
+          return doRequest('PUT', this);
         }
       },
       /**
@@ -183,26 +184,7 @@ export function rest(url, config) {
        */
       'destroy': {
         value: function destroy() {
-          let keyVal = extractParams(this, config.params);
-          let client = createRequest();
-          let urlApp = paramKeys.map(key => keyVal[key])
-            .join('/');
-          let self = this;
-
-          return new Promise((resolve, reject) => {
-            client.withUrl(urlApp)
-              .asDelete()
-              .send()
-              .then(data => {
-                Object.keys(self).forEach(key => delete self[key]);
-                resolve(data.content);
-              }, (err) => {
-                reject(err);
-              })
-              .catch(err => {
-                reject(err);
-              });
-          });
+          return doRequest('DELETE', this);
         }
       },
       /**
